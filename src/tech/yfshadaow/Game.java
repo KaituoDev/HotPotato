@@ -119,6 +119,7 @@ public class Game extends BukkitRunnable implements Listener {
         } else {
             startTime = getTime(world);
             world.getBlockAt(1000,13,996).setType(Material.AIR);
+            HandlerList.unregisterAll(this);
             Bukkit.getPluginManager().registerEvents(this,plugin);
             Bukkit.getScheduler().runTask(plugin, ()-> {
                 for (Player p : players) {
@@ -152,6 +153,11 @@ public class Game extends BukkitRunnable implements Listener {
                 }
             },80);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                Block block = world.getBlockAt(1004,13,1000);
+                block.setType(Material.OAK_BUTTON);
+                BlockData data = block.getBlockData().clone();
+                ((Directional)data).setFacing(BlockFace.WEST);
+                block.setBlockData(data);
                 for (Player p: players) {
                     p.teleport(new Location(world, 1001.5,94,993.5));
                     p.sendTitle("§e游戏开始！",null,2,16,2);
@@ -234,6 +240,7 @@ public class Game extends BukkitRunnable implements Listener {
                         },100);
                     }
                     Bukkit.getScheduler().runTaskLater(plugin, ()-> {
+                        world.getBlockAt(1004,13,1000).setType(Material.AIR);
                         Block block = world.getBlockAt(1000,13,996);
                         block.setType(Material.OAK_BUTTON);
                         BlockData data = block.getBlockData().clone();
