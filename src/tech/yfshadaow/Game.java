@@ -79,9 +79,12 @@ public class Game extends BukkitRunnable implements Listener {
         if (edbee.getDamager() instanceof Player && edbee.getEntity() instanceof Player) {
             if (playersAlive.contains(edbee.getDamager()) && playersAlive.contains(edbee.getEntity())) {
                 if (((Player) edbee.getDamager()).getInventory().contains(potato)) {
+                    ((Player) edbee.getDamager()).removePotionEffect(PotionEffectType.SPEED);
+                    ((Player) edbee.getDamager()).addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,0,false,false));
                     ((Player) edbee.getDamager()).getInventory().clear();
                     ((Player) edbee.getEntity()).getInventory().setItem(0,potato);
                     ((Player) edbee.getEntity()).getInventory().setItem(EquipmentSlot.HEAD,tnt);
+                    ((Player) edbee.getEntity()).addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,1,false,false));
                     for (Player p : players) {
                         p.spigot().sendMessage(ChatMessageType.ACTION_BAR,new TextComponent("§b§l" + edbee.getEntity().getName() + " 接到了山芋！"));
                     }
@@ -119,7 +122,6 @@ public class Game extends BukkitRunnable implements Listener {
         } else {
             startTime = getTime(world);
             world.getBlockAt(1000,13,996).setType(Material.AIR);
-            HandlerList.unregisterAll(this);
             Bukkit.getPluginManager().registerEvents(this,plugin);
             Bukkit.getScheduler().runTask(plugin, ()-> {
                 for (Player p : players) {
@@ -164,6 +166,7 @@ public class Game extends BukkitRunnable implements Listener {
                     p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_HARP,1f,2f);
                     p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,999999,0,false,false));
                     p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION,999999,0,false,false));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,0,false,false));
                 }
 
             }, 100);
@@ -193,6 +196,7 @@ public class Game extends BukkitRunnable implements Listener {
                 int i = random.nextInt(playersAlive.size());
                 playersAlive.get(i).getInventory().setItem(0,potato);
                 playersAlive.get(i).getInventory().setItem(EquipmentSlot.HEAD,tnt);
+                playersAlive.get(i).addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,1,false,false));
                 for (Player p : players) {
                     p.spigot().sendMessage(ChatMessageType.ACTION_BAR,new TextComponent("§b§l" + playersAlive.get(i).getName() + " 接到了山芋！"));
                 }
