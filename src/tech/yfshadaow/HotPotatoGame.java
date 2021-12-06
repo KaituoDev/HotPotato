@@ -29,7 +29,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
 
-public class Game extends BukkitRunnable implements Listener {
+public class HotPotatoGame extends BukkitRunnable implements Listener {
     HotPotato plugin;
     List<Player> players;
     List<Player> playersAlive;
@@ -39,7 +39,7 @@ public class Game extends BukkitRunnable implements Listener {
     List<Integer> taskIds;
     long startTime;
 
-    public Game(HotPotato plugin) {
+    public HotPotatoGame(HotPotato plugin) {
         this.plugin = plugin;
         this.players = plugin.players;
         this.playersAlive = new ArrayList<>();
