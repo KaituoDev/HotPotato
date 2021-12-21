@@ -7,7 +7,6 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
-import org.bukkit.craftbukkit.v1_16_R3.CraftWorld;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
@@ -277,6 +276,6 @@ public class HotPotatoGame extends BukkitRunnable implements Listener {
         fw.detonate();
     }
     public long getTime(World world) {
-        return ((CraftWorld)world).getHandle().worldData.getTime();
+        return (world.getGameTime());
     }
 }
