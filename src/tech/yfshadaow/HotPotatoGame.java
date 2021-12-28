@@ -3,12 +3,7 @@ package tech.yfshadaow;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
-import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.Directional;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,35 +13,41 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.BoundingBox;
 
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
-public class HotPotatoGame extends BukkitRunnable implements Listener {
-    HotPotato plugin;
-    List<Player> players;
+import static tech.yfshadaow.GameUtils.world;
+
+public class HotPotatoGame extends Game implements Listener {
+    private static final HotPotatoGame instance = new HotPotatoGame((HotPotato) Bukkit.getPluginManager().getPlugin("HotPotato"));
     List<Player> playersAlive;
     ItemStack potato;
     ItemStack tnt;
-    Random random;
-    List<Integer> taskIds;
     long startTime;
 
-    public HotPotatoGame(HotPotato plugin) {
+    private HotPotatoGame(HotPotato plugin) {
         this.plugin = plugin;
-        this.players = plugin.players;
-        this.playersAlive = new ArrayList<>();
-        this.potato = new ItemStack(Material.BAKED_POTATO,1);
-        this.random = new Random();
-        this.taskIds = new ArrayList<>();
-        this.tnt = new ItemStack(Material.TNT,1);
+        players = HotPotato.players;
+        playersAlive = new ArrayList<>();
+        potato = new ItemStack(Material.BAKED_POTATO, 1);
+        tnt = new ItemStack(Material.TNT, 1);
+        initGame(plugin, "HotPotato", 5, new Location(world, 1000, 13, 996),
+                BlockFace.SOUTH, new Location(world, 1004, 13, 1000), BlockFace.WEST,
+                new Location(world, 1000, 12, 1000), new BoundingBox(951, 74, 943, 1050, 130, 1042));
     }
+
+    public static HotPotatoGame getInstance() {
+        return instance;
+    }
+
     @EventHandler
     public void preventDamage(EntityDamageEvent ede) {
         if (ede.getEntity() instanceof Player) {
@@ -55,12 +56,14 @@ public class HotPotatoGame extends BukkitRunnable implements Listener {
             }
         }
     }
+
     @EventHandler
     public void preventDroppingItem(PlayerDropItemEvent pdie) {
         if (playersAlive.contains(pdie.getPlayer())) {
             pdie.setCancelled(true);
         }
     }
+
     @EventHandler
     public void preventClickingInventory(InventoryClickEvent ice) {
         if (ice.getWhoClicked() instanceof Player) {
@@ -69,6 +72,7 @@ public class HotPotatoGame extends BukkitRunnable implements Listener {
             }
         }
     }
+
     @EventHandler
     public void transferPotato(EntityDamageByEntityEvent edbee) {
         if (edbee.getDamager() instanceof Firework) {
@@ -79,13 +83,13 @@ public class HotPotatoGame extends BukkitRunnable implements Listener {
             if (playersAlive.contains(edbee.getDamager()) && playersAlive.contains(edbee.getEntity())) {
                 if (((Player) edbee.getDamager()).getInventory().contains(potato)) {
                     ((Player) edbee.getDamager()).removePotionEffect(PotionEffectType.SPEED);
-                    ((Player) edbee.getDamager()).addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,0,false,false));
+                    ((Player) edbee.getDamager()).addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 0, false, false));
                     ((Player) edbee.getDamager()).getInventory().clear();
-                    ((Player) edbee.getEntity()).getInventory().setItem(0,potato);
-                    ((Player) edbee.getEntity()).getInventory().setItem(EquipmentSlot.HEAD,tnt);
-                    ((Player) edbee.getEntity()).addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,1,false,false));
+                    ((Player) edbee.getEntity()).getInventory().setItem(0, potato);
+                    ((Player) edbee.getEntity()).getInventory().setItem(EquipmentSlot.HEAD, tnt);
+                    ((Player) edbee.getEntity()).addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 1, false, false));
                     for (Player p : players) {
-                        p.spigot().sendMessage(ChatMessageType.ACTION_BAR,new TextComponent("§b§l" + edbee.getEntity().getName() + " 接到了山芋！"));
+                        p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§b§l" + edbee.getEntity().getName() + " 接到了山芋！"));
                     }
                 }
             }
@@ -97,185 +101,130 @@ public class HotPotatoGame extends BukkitRunnable implements Listener {
         players.remove(pcge.getPlayer());
         playersAlive.remove(pcge.getPlayer());
     }
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent pqe) {
-        players.remove(pqe.getPlayer());
-        playersAlive.remove(pqe.getPlayer());
+
+
+    @Override
+    protected void initGameRunnable() {
+        gameRunnable = () -> {
+
+            Collection<Player> startingPlayers = getStartingPlayers();
+            players.addAll(startingPlayers);
+            playersAlive.addAll(startingPlayers);
+            if (players.size() < 2) {
+                for (Player p : players) {
+                    p.sendMessage("§c至少需要2人才能开始游戏！");
+                }
+                players.clear();
+                playersAlive.clear();
+            } else {
+                startTime = getTime(world);
+                removeStartButton();
+                Bukkit.getPluginManager().registerEvents(this, plugin);
+                startCountdown();
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (Player p : players) {
+                        p.getInventory().clear();
+                    }
+                });
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    placeSpectateButton();
+                    for (Player p : players) {
+                        p.teleport(new Location(world, 1001.5, 94, 993.5));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 999999, 0, false, false));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 999999, 0, false, false));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 0, false, false));
+                    }
+
+                }, countDownSeconds * 20);
+                taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+                    int time = 20 - (int) (((getTime(world) - startTime) / 20) % 20);
+                    List<Player> playersCopy = new ArrayList<>(players);
+                    if (time <= 15) {
+                        for (Player p : playersCopy) {
+                            p.setLevel(time);
+                            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 0.2f, 1f);
+                        }
+                    } else {
+                        for (Player p : playersCopy) {
+                            p.setLevel(0);
+                        }
+                    }
+                }, countDownSeconds * 20, 20));
+                taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+                    for (Player p : playersAlive) {
+                        if (p.getInventory().contains(potato)) {
+                            spawnFirework(p);
+                        }
+                    }
+                }, countDownSeconds * 20 + 50, 100))
+                ;
+                taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+                    int i = random.nextInt(playersAlive.size());
+                    playersAlive.get(i).getInventory().setItem(0, potato);
+                    playersAlive.get(i).getInventory().setItem(EquipmentSlot.HEAD, tnt);
+                    playersAlive.get(i).addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 1, false, false));
+                    for (Player p : players) {
+                        p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§b§l" + playersAlive.get(i).getName() + " 接到了山芋！"));
+                    }
+                }, countDownSeconds * 20, 400))
+                ;
+                taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+                    Player playerOut = null;
+                    for (Player p : playersAlive) {
+                        if (p.getInventory().contains(potato)) {
+                            playerOut = p;
+                        }
+                    }
+                    if (playerOut != null) {
+                        for (Player p : players) {
+                            p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§f§l" + playerOut.getName() + " §c爆炸了！"));
+                        }
+                        playerOut.setGameMode(GameMode.SPECTATOR);
+                        world.createExplosion(playerOut.getLocation(), 0.5f, false, false);
+                        playersAlive.remove(playerOut);
+                    }
+
+                }, countDownSeconds * 20 + 300, 400));
+                taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+                    if (playersAlive.size() <= 1) {
+                        Player winner = playersAlive.get(0);
+                        spawnFireworks(winner);
+                        List<Player> playersCopy = new ArrayList<>(players);
+                        for (Player p : playersCopy) {
+                            p.sendTitle("§e" + playersAlive.get(0).getName() + " §b获胜了！", null, 5, 50, 5);
+                            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                p.teleport(new Location(world, 1000.5, 12.0625, 999.5));
+                                Bukkit.getPluginManager().callEvent(new PlayerEndGameEvent(p, this));
+                            }, 100);
+                        }
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            placeStartButton();
+                            removeSpectateButton();
+                            HandlerList.unregisterAll(this);
+                        }, 100);
+                        players.clear();
+                        playersAlive.clear();
+                        List<Integer> taskIdsCopy = new ArrayList<>(taskIds);
+                        taskIds.clear();
+                        for (int i : taskIdsCopy) {
+                            Bukkit.getScheduler().cancelTask(i);
+                        }
+                    }
+
+                }, 100, 1));
+            }
+        };
     }
 
     @Override
-    public void run() {
-        World world = Bukkit.getWorld("world");
-        for (Entity e :world.getNearbyEntities(new Location(world, 1000,12,1000),10,10,10) ) {
-            if (e instanceof Player) {
-                players.add((Player) e);
-                playersAlive.add((Player) e);
-            }
-        }
-        if (players.size() < 2) {
-            for (Player p : players) {
-                p.sendMessage("§c至少需要2人才能开始游戏！");
-            }
-            players.clear();
-            playersAlive.clear();
-        } else {
-            startTime = getTime(world);
-            world.getBlockAt(1000,13,996).setType(Material.AIR);
-            Bukkit.getPluginManager().registerEvents(this,plugin);
-            Bukkit.getScheduler().runTask(plugin, ()-> {
-                for (Player p : players) {
-                    p.sendTitle("§a游戏还有 5 秒开始",null,2,16,2);
-                    p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_HARP,1f,1f);
-                    p.getInventory().clear();
-                }
-            });
-            Bukkit.getScheduler().runTaskLater(plugin, ()-> {
-                for (Player p : players) {
-                    p.sendTitle("§a游戏还有 4 秒开始",null,2,16,2);
-                    p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_HARP,1f,1f);
-                }
-            },20);
-            Bukkit.getScheduler().runTaskLater(plugin, ()-> {
-                for (Player p : players) {
-                    p.sendTitle("§a游戏还有 3 秒开始",null,2,16,2);
-                    p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_HARP,1f,1f);
-                }
-            },40);
-            Bukkit.getScheduler().runTaskLater(plugin, ()-> {
-                for (Player p : players) {
-                    p.sendTitle("§a游戏还有 2 秒开始",null,2,16,2);
-                    p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_HARP,1f,1f);
-                }
-            },60);
-            Bukkit.getScheduler().runTaskLater(plugin, ()-> {
-                for (Player p : players) {
-                    p.sendTitle("§a游戏还有 1 秒开始",null,2,16,2);
-                    p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_HARP,1f,1f);
-                }
-            },80);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                Block block = world.getBlockAt(1004,13,1000);
-                block.setType(Material.OAK_BUTTON);
-                BlockData data = block.getBlockData().clone();
-                ((Directional)data).setFacing(BlockFace.WEST);
-                block.setBlockData(data);
-                for (Player p: players) {
-                    p.teleport(new Location(world, 1001.5,94,993.5));
-                    p.sendTitle("§e游戏开始！",null,2,16,2);
-                    p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_HARP,1f,2f);
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,999999,0,false,false));
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION,999999,0,false,false));
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,0,false,false));
-                }
+    protected void savePlayerQuitData(Player p) throws IOException {
 
-            }, 100);
-            taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () ->{
-                int time = 20 - (int)(((getTime(world) - startTime) / 20) % 20);
-                List<Player> playersCopy = new ArrayList<>(players);
-                if (time <= 15) {
-                    for (Player p : playersCopy) {
-                        p.setLevel(time);
-                        p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_BELL,0.2f,1f);
-                    }
-                } else {
-                    for (Player p : playersCopy) {
-                        p.setLevel(0);
-                    }
-                }
-            },100,20));
-            taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () ->{
-                for (Player p : playersAlive) {
-                    if (p.getInventory().contains(potato)) {
-                        spawnFirework(p.getLocation());
-                    }
-                }
-            },150,100))
-            ;
-            taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () ->{
-                int i = random.nextInt(playersAlive.size());
-                playersAlive.get(i).getInventory().setItem(0,potato);
-                playersAlive.get(i).getInventory().setItem(EquipmentSlot.HEAD,tnt);
-                playersAlive.get(i).addPotionEffect(new PotionEffect(PotionEffectType.SPEED,999999,1,false,false));
-                for (Player p : players) {
-                    p.spigot().sendMessage(ChatMessageType.ACTION_BAR,new TextComponent("§b§l" + playersAlive.get(i).getName() + " 接到了山芋！"));
-                }
-            },100,400))
-            ;
-            taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () ->{
-                Player playerOut = null;
-                for (Player p: playersAlive) {
-                    if (p.getInventory().contains(potato)) {
-                        playerOut = p;
-                    }
-                }
-                if (playerOut != null) {
-                    for (Player p : players) {
-                        p.spigot().sendMessage(ChatMessageType.ACTION_BAR,new TextComponent("§f§l" + playerOut.getName() + " §c爆炸了！"));
-                    }
-                    playerOut.setGameMode(GameMode.SPECTATOR);
-                    world.createExplosion(playerOut.getLocation(), 0.5f, false, false);
-                    playersAlive.remove(playerOut);
-                }
-
-                },400,400));
-            taskIds.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
-                if (playersAlive.size() <= 1) {
-                    Player winner = playersAlive.get(0);
-                    spawnFirework(winner.getLocation());
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        spawnFirework(winner.getLocation());
-                    },8);
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        spawnFirework(winner.getLocation());
-                    },16);
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        spawnFirework(winner.getLocation());
-                    },24);
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        spawnFirework(winner.getLocation());
-                    },32);
-                    List<Player> playersCopy = new ArrayList<>(players);
-                    for (Player p : playersCopy) {
-                        p.sendTitle("§e" + playersAlive.get(0).getName() + " §b获胜了！",null,5,50, 5);
-                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                            p.teleport(new Location(world,1000.5,12.0625,999.5));
-                            Bukkit.getPluginManager().callEvent(new PlayerEndGameEvent(p));
-                        },100);
-                    }
-                    Bukkit.getScheduler().runTaskLater(plugin, ()-> {
-                        world.getBlockAt(1004,13,1000).setType(Material.AIR);
-                        Block block = world.getBlockAt(1000,13,996);
-                        block.setType(Material.OAK_BUTTON);
-                        BlockData data = block.getBlockData().clone();
-                        ((Directional)data).setFacing(BlockFace.SOUTH);
-                        block.setBlockData(data);
-                        HandlerList.unregisterAll(this);
-                    },100);
-                    players.clear();
-                    playersAlive.clear();
-                    List<Integer> taskIdsCopy = new ArrayList<>(taskIds);
-                    taskIds.clear();
-                    for (int i : taskIdsCopy) {
-                        Bukkit.getScheduler().cancelTask(i);
-                    }
-                }
-
-            },100,1));
-        }
+        players.remove(p);
+        playersAlive.remove(p);
     }
-    public static void spawnFirework(Location location){
-        Location loc = location;
-        loc.setY(loc.getY() + 0.9);
-        Firework fw = (Firework) loc.getWorld().spawnEntity(loc, EntityType.FIREWORK);
-        FireworkMeta fwm = fw.getFireworkMeta();
 
-        fwm.setPower(2);
-        fwm.addEffect(FireworkEffect.builder().withColor(Color.LIME).flicker(true).build());
-
-        fw.setFireworkMeta(fwm);
-        fw.detonate();
-    }
-    public long getTime(World world) {
-        return (world.getGameTime());
+    @Override
+    protected void rejoin(Player player) {
+        return;
     }
 }
