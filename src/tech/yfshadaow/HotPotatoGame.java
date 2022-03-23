@@ -41,7 +41,7 @@ public class HotPotatoGame extends Game implements Listener {
         tnt = new ItemStack(Material.TNT, 1);
         initGame(plugin, "HotPotato", "§e烫手山芋", 5, new Location(world, 1000, 13, 996),
                 BlockFace.SOUTH, new Location(world, 1004, 13, 1000), BlockFace.WEST,
-                new Location(world, 1000, 12, 1000), new BoundingBox(951, 74, 943, 1050, 130, 1042));
+                new Location(world, 1000, 12, 1000), new BoundingBox(700, -64, 700, 1300, 320, 1300));
     }
 
     public static HotPotatoGame getInstance() {
