@@ -1,5 +1,7 @@
-package tech.yfshadaow;
+package fun.kaituo;
 
+import fun.kaituo.event.PlayerChangeGameEvent;
+import fun.kaituo.event.PlayerEndGameEvent;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
@@ -24,7 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static tech.yfshadaow.GameUtils.world;
+import static fun.kaituo.GameUtils.world;
 
 public class HotPotatoGame extends Game implements Listener {
     private static final HotPotatoGame instance = new HotPotatoGame((HotPotato) Bukkit.getPluginManager().getPlugin("HotPotato"));
@@ -32,6 +34,7 @@ public class HotPotatoGame extends Game implements Listener {
     ItemStack potato;
     ItemStack tnt;
     long startTime;
+    int countDownSeconds = 5;
 
     private HotPotatoGame(HotPotato plugin) {
         this.plugin = plugin;
@@ -39,9 +42,9 @@ public class HotPotatoGame extends Game implements Listener {
         playersAlive = new ArrayList<>();
         potato = new ItemStack(Material.BAKED_POTATO, 1);
         tnt = new ItemStack(Material.TNT, 1);
-        initGame(plugin, "HotPotato", "§e烫手山芋", 5, new Location(world, 1000, 13, 996),
-                BlockFace.SOUTH, new Location(world, 1004, 13, 1000), BlockFace.WEST,
-                new Location(world, 1000, 12, 1000), new BoundingBox(700, -64, 700, 1300, 320, 1300));
+        initializeGame(plugin, "HotPotato", "§e烫手山芋", new Location(world, 1000, 12, 1000), new BoundingBox(700, -64, 700, 1300, 320, 1300));
+        initializeButtons(new Location(world, 1000, 13, 996),
+                BlockFace.SOUTH, new Location(world, 1004, 13, 1000), BlockFace.WEST);
     }
 
     public static HotPotatoGame getInstance() {
@@ -104,10 +107,10 @@ public class HotPotatoGame extends Game implements Listener {
 
 
     @Override
-    protected void initGameRunnable() {
+    protected void initializeGameRunnable() {
         gameRunnable = () -> {
 
-            Collection<Player> startingPlayers = getStartingPlayers();
+            Collection<Player> startingPlayers = getPlayersNearHub(50, 50, 50);
             players.addAll(startingPlayers);
             playersAlive.addAll(startingPlayers);
             if (players.size() < 2) {
@@ -120,7 +123,7 @@ public class HotPotatoGame extends Game implements Listener {
                 startTime = getTime(world);
                 removeStartButton();
                 Bukkit.getPluginManager().registerEvents(this, plugin);
-                startCountdown();
+                startCountdown(countDownSeconds);
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     for (Player p : players) {
                         p.getInventory().clear();
