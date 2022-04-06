@@ -3,4 +3,5 @@ name: HotPotato
 main: fun.kaituo.HotPotato
 version: 1.0
 author: YFshadaow
+
 depend: [GameUtils]
