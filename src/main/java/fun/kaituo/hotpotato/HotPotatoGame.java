@@ -1,7 +1,8 @@
-package fun.kaituo;
+package fun.kaituo.hotpotato;
 
-import fun.kaituo.event.PlayerChangeGameEvent;
-import fun.kaituo.event.PlayerEndGameEvent;
+import fun.kaituo.gameutils.Game;
+import fun.kaituo.gameutils.event.PlayerChangeGameEvent;
+import fun.kaituo.gameutils.event.PlayerEndGameEvent;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
@@ -19,14 +20,11 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.util.BoundingBox;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import static fun.kaituo.GameUtils.world;
 
 public class HotPotatoGame extends Game implements Listener {
     private static final HotPotatoGame instance = new HotPotatoGame((HotPotato) Bukkit.getPluginManager().getPlugin("HotPotato"));
@@ -42,9 +40,10 @@ public class HotPotatoGame extends Game implements Listener {
         playersAlive = new ArrayList<>();
         potato = new ItemStack(Material.BAKED_POTATO, 1);
         tnt = new ItemStack(Material.TNT, 1);
-        initializeGame(plugin, "HotPotato", "§e烫手山芋", new Location(world, 1000, 12, 1000), new BoundingBox(700, -64, 700, 1300, 320, 1300));
+        initializeGame(plugin, "HotPotato", "§e烫手山芋", new Location(world, 1000, 12, 1000));
         initializeButtons(new Location(world, 1000, 13, 996),
                 BlockFace.SOUTH, new Location(world, 1004, 13, 1000), BlockFace.WEST);
+        initializeGameRunnable();
     }
 
     public static HotPotatoGame getInstance() {
@@ -106,8 +105,7 @@ public class HotPotatoGame extends Game implements Listener {
     }
 
 
-    @Override
-    protected void initializeGameRunnable() {
+    private void initializeGameRunnable() {
         gameRunnable = () -> {
 
             Collection<Player> startingPlayers = getPlayersNearHub(50, 50, 50);
@@ -220,14 +218,47 @@ public class HotPotatoGame extends Game implements Listener {
     }
 
     @Override
-    protected void savePlayerQuitData(Player p) throws IOException {
-
+    protected void quit(Player p) throws IOException {
         players.remove(p);
         playersAlive.remove(p);
     }
 
     @Override
-    protected void rejoin(Player player) {
-        return;
+    protected boolean rejoin(Player player) {
+        return false;
+    }
+
+    @Override
+    protected boolean join(Player player) {
+        player.setBedSpawnLocation(hubLocation, true);
+        player.teleport(hubLocation);
+        return true;
+    }
+
+    @Override
+    protected void forceStop() {
+        if (playersAlive.isEmpty()) {
+            return;
+        }
+        List<Player> playersCopy = new ArrayList<>(players);
+        for (Player p : playersCopy) {
+            p.sendTitle("§c游戏被强制停止", null, 5, 50, 5);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                p.teleport(new Location(world, 1000.5, 12.0625, 999.5));
+                Bukkit.getPluginManager().callEvent(new PlayerEndGameEvent(p, this));
+            }, 100);
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            placeStartButton();
+            removeSpectateButton();
+            HandlerList.unregisterAll(this);
+        }, 100);
+        players.clear();
+        playersAlive.clear();
+        List<Integer> taskIdsCopy = new ArrayList<>(taskIds);
+        taskIds.clear();
+        for (int i : taskIdsCopy) {
+            Bukkit.getScheduler().cancelTask(i);
+        }
     }
 }

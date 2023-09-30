@@ -4,9 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>fun.kaituo</groupId>
+    <groupId>fun.kaituo.hotpotato</groupId>
     <artifactId>HotPotato</artifactId>
-    <version>1.0</version>
+    <version>1.1</version>
     <packaging>jar</packaging>
 
     <name>HotPotato</name>
@@ -17,7 +17,34 @@
     </properties>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.wagon</groupId>
+                <artifactId>wagon-ftp</artifactId>
+            </extension>
+        </extensions>
+
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>wagon-maven-plugin</artifactId>
+                <version>2.0.2</version>
+                <executions>
+                    <execution>
+                        <id>upload-assembly</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>upload-single</goal>
+                        </goals>
+                        <configuration>
+                            <serverId>kaituo-minigame-ftp</serverId> <!-- references the server declaration -->
+                            <fromFile>${project.build.directory}/${project.artifactId}-${project.version}.jar</fromFile>
+                            <url>ftp://mc.kaituo.fun:22000</url>
+                            <toFile>${project.artifactId}.jar</toFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -61,7 +88,7 @@
     <repositories>
         <repository>
             <id>Minigames-Kaituo</id>
-            <url>https://nexus.kaituo.fun/repository/maven-releases/</url>
+            <url>https://maven.kaituo.fun/maven-releases/</url>
         </repository>
         <repository>
             <id>spigotmc-repo</id>
@@ -77,13 +104,13 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.18.2-R0.1-SNAPSHOT</version>
+            <version>1.20.2-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>fun.kaituo</groupId>
+            <groupId>fun.kaituo.gameutils</groupId>
             <artifactId>GameUtils</artifactId>
-            <version>1.0</version>
+            <version>1.3.1</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
