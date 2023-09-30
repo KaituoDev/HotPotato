@@ -49,8 +49,8 @@ public class HotPotato extends JavaPlugin implements Listener {
     public void onDisable() {
         Bukkit.getScheduler().cancelTasks(this);
         HandlerList.unregisterAll((Plugin) this);
-        if (players.size() > 0) {
-            for (Player p : players) {
+        for (Player p: Bukkit.getOnlinePlayers()) {
+            if (gameUtils.getPlayerGame(p) == getGameInstance()) {
                 Bukkit.dispatchCommand(p, "join Lobby");
             }
         }
