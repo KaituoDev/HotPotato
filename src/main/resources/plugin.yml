@@ -1,7 +1,7 @@
 api-version: 1.13
 name: HotPotato
 main: fun.kaituo.hotpotato.HotPotato
-version: 1.1
-author: YFshadaow
+version: 2.0
+author: IwannaSun
 
 depend: [GameUtils]
