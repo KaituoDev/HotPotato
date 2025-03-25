@@ -38,7 +38,6 @@ public class PlayState implements GameState, Listener {
     @Getter
     private Location playfield;
     private BossBar countdownBar;
-    private final int explosionInterval = WaitState.INST.getExplosionInterval();
     private final Set<Player> potatoHolders = new HashSet<>();
     private org.bukkit.scoreboard.Scoreboard scoreboard;
     private org.bukkit.scoreboard.Team potatoHolderTeam;
@@ -102,7 +101,6 @@ public class PlayState implements GameState, Listener {
         if (playfield == null) {
             init();
         }
-
         playersAlive.clear();
 
         for (Player p : game.getPlayers()) {
@@ -186,6 +184,7 @@ public class PlayState implements GameState, Listener {
 
         // Update the display for all potato holders
         updatePotatoHolders();
+        int explosionInterval = WaitState.INST.getExplosionInterval();
 
         countdownBar.setTitle("§c山芋爆炸倒计时: " + explosionInterval + "秒");
         countdownBar.setProgress(1.0);
@@ -195,8 +194,8 @@ public class PlayState implements GameState, Listener {
     }
 
     private void potatoTimer(int seconds) {
-        final int totalSeconds = seconds;
-        final int[] timeLeft = {seconds};
+        final int totalTicks = seconds*20;
+        final int[] timeLeft = {totalTicks};
 
         BukkitTask timerTask = Bukkit.getScheduler().runTaskTimer(game, () -> {
             timeLeft[0]--;
@@ -207,12 +206,12 @@ public class PlayState implements GameState, Listener {
 
             // 更新BossBar
             if (timeLeft[0] > 0) {
-                countdownBar.setTitle("§c山芋爆炸倒计时: " + timeLeft[0] + "秒");
-                countdownBar.setProgress((double) timeLeft[0] / totalSeconds);
+                countdownBar.setTitle("§c山芋爆炸倒计时: " + (timeLeft[0]+20)/20 + "秒");
+                countdownBar.setProgress((double) timeLeft[0] / totalTicks);
             } else {
                 potatoBoom();
             }
-        }, 20L, 20L); // 每秒执行一次
+        }, 0, 1); // 每秒执行一次
 
         taskIds.add(timerTask.getTaskId());
     }
@@ -253,15 +252,8 @@ public class PlayState implements GameState, Listener {
 
         potatoHolders.clear();
 
-        // Continue to next round if game isn't over
         if (anyEliminated && getPlayersAlive().size() > 1) {
-            // Update BossBar to show "Distributing potatoes" message
-            countdownBar.setTitle("§e发放土豆中...");
-            countdownBar.setProgress(1.0);
-            countdownBar.setColor(BarColor.YELLOW);
-
-            BukkitTask newRoundTask = Bukkit.getScheduler().runTaskLater(game, this::startGame, 60L);
-            taskIds.add(newRoundTask.getTaskId());
+            prepareNextRound();
         }
     }
 
@@ -336,6 +328,7 @@ public class PlayState implements GameState, Listener {
             p.removePotionEffect(PotionEffectType.SATURATION);
             p.removePotionEffect(PotionEffectType.RESISTANCE);
             p.removePotionEffect(PotionEffectType.GLOWING);
+            p.setFireTicks(0);
         }
         for (Player p : game.getPlayers()) {
             removePlayer(p);
@@ -372,6 +365,15 @@ public class PlayState implements GameState, Listener {
 
     @Override
     public void removePlayer(Player p) {
+        boolean wasLastPotatoHolder = false;
+
+        // Check if player was a potato holder
+        if (potatoHolders.contains(p)) {
+            potatoHolders.remove(p);
+            // Check if there are no more potato holders after removal
+            wasLastPotatoHolder = potatoHolders.isEmpty();
+            updatePotatoHolders();
+        }
         playersAlive.remove(p.getUniqueId());
         p.setGameMode(GameMode.ADVENTURE);
         p.getInventory().clear();
@@ -379,6 +381,10 @@ public class PlayState implements GameState, Listener {
         p.removePotionEffect(PotionEffectType.SATURATION);
         p.removePotionEffect(PotionEffectType.GLOWING);
         p.removePotionEffect(PotionEffectType.SPEED);
+
+        if (wasLastPotatoHolder && getPlayersAlive().size() > 1) {
+            prepareNextRound();
+        }
     }
 
     @Override
@@ -449,7 +455,27 @@ public class PlayState implements GameState, Listener {
             }, i * 8L); // Launch fireworks with slight delay between each
         }
     }
+
+    private void prepareNextRound() {
+        // Cancel existing tasks
+        for (int id : new HashSet<>(taskIds)) {
+            if (Bukkit.getScheduler().isQueued(id)) {
+                Bukkit.getScheduler().cancelTask(id);
+                taskIds.remove(id);
+            }
+        }
+
+        // Update BossBar to show "Distributing potatoes" message
+        countdownBar.setTitle("§e发放土豆中...");
+        countdownBar.setProgress(1.0);
+        countdownBar.setColor(BarColor.YELLOW);
+
+        // Schedule next round to start after 3 seconds (60 ticks)
+        BukkitTask newRoundTask = Bukkit.getScheduler().runTaskLater(game, this::startGame, 60L);
+        taskIds.add(newRoundTask.getTaskId());
+    }
 }
+
 
 
 
